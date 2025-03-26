@@ -15,10 +15,9 @@ import (
 	"time"
 
 	"github.com/inhies/go-bytesize"
-	"golang.org/x/sys/unix"
 	"github.com/luckylittle/sizechecker/discord"
 	"github.com/luckylittle/sizechecker/pushover"
-
+	"golang.org/x/sys/unix"
 )
 
 func getUsedSpace(path string) (int64, error) {
@@ -119,7 +118,9 @@ func main() {
 	limitFlag := flag.String("limit", "", "Limit size (e.g., 50GB). For 'u' runtype, it's the maximum allowed used space; for 'a', it's the minimum required free space.")
 	runTypeFlag := flag.String("runtype", "", "'a' for available space check, 'u' for used space check")
 	discordFlag := flag.String("discord", "", "Discord webhook URL for notifications (optional)")
-	pushoverFlag := flag.String("o", "", "Trigger a Pushover notification. This requires `PUSHOVER_APITOKEN` and `PUSHOVER_USERKEY` to be set!")
+	pushoverFlag := flag.String("pushover", "", "Trigger a Pushover notification. This requires `pushover-api, pushover-userkey` to be set!")
+	// pushoverApiFlag := flag.String("pushover-api", "", "*REQUIRED* when pushover is used")
+	// pushoverUserKeyFlag := flag.String("pushover-userkey", "", "*REQUIRED* when pushover is used")
 	cooldownFlag := flag.Duration("cooldown", time.Minute, "Cooldown duration between notifications (e.g., 1m, 30s)")
 	flag.Parse()
 
@@ -211,7 +212,7 @@ func main() {
 		if err != nil {
 			fmt.Printf("Error checking notification cooldown: %v\n", err)
 		} else if sendNotification {
-			if err := sendDiscordNotification(*discordFlag, message); err != nil {
+			if err := discord.SendDiscordNotification(*discordFlag, message); err != nil {
 				fmt.Printf("Error sending Discord notification: %v\n", err)
 			} else {
 				fmt.Println("Discord notification sent successfully.")
@@ -225,20 +226,27 @@ func main() {
 	}
 
 	if *pushoverFlag != "" {
-		sendNotification, err := shouldSendNotification(*pushoverFlag, *cooldownFlag)
-		if err != nil {
-			fmt.Printf("Error checking notification cooldown: %v\n", err)
-		} else if sendNotification {
-			if err := pushoverNotification(*pushoverFlag, message); err != nil {
-				fmt.Printf("Error sending Pusover notification: %v\n", err)
-			} else {
-				fmt.Println("Pushover notification sent successfully.")
-				if err := updateNotificationTimestamp(*pushoverFlag); err != nil {
-					fmt.Printf("Error updating notification timestamp: %v\n", err)
-				}
-			}
-		} else {
-			fmt.Println("Notification not sent due to rate limiting.")
+		parts := strings.Split(*pushoverFlag, ",")
+		if len(parts) != 2 {
+			fmt.Println("Error: expected two values separated by ','")
+			return
+		}
+		pushoverApiFlag := parts[0]
+		pushoverUserKeyFlag := parts[1]
+		if pushoverApiFlag == "" || pushoverUserKeyFlag == "" {
+			fmt.Println("Error: When using -pushover, both $pushover-api and $pushover-userkey must be provided!")
+			flag.Usage()
+			os.Exit(1)
+		}
+		notification := pushover.Notification{
+			APIToken: pushoverApiFlag,
+			UserKey:  pushoverUserKeyFlag,
+			Message:  message,
+			Title:    "sizechecker notification",
+		}
+		if err := notification.Send(); err != nil {
+			fmt.Println("Error sending notification:", err)
+			os.Exit(1)
 		}
 	}
 

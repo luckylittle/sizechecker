@@ -9,7 +9,6 @@ import (
 )
 
 var (
-	// API is the Pushover API endpoint.
 	API = "https://api.pushover.net/1/messages.json"
 )
 
@@ -21,8 +20,7 @@ type apiResponse struct {
 	Token   string   `json:"token"`
 }
 
-// Notification is a pushover notification.
-type pushoverNotification struct {
+type Notification struct {
 	Message  string
 	Title    string
 	APIToken string
@@ -31,8 +29,12 @@ type pushoverNotification struct {
 	Client *http.Client
 }
 
-// Send a pushover notification.
-func (n *pushoverNotification) Send() error {
+func (n *Notification) Send() error {
+
+	if n.Client == nil {
+		n.Client = &http.Client{}
+	}
+
 	vals := make(url.Values)
 	vals.Set("token", n.APIToken)
 	vals.Set("user", n.UserKey)
@@ -40,6 +42,7 @@ func (n *pushoverNotification) Send() error {
 	vals.Set("title", n.Title)
 
 	resp, err := n.Client.PostForm(API, vals)
+
 	if err != nil {
 		return err
 	}

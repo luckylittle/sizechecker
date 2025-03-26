@@ -9,7 +9,7 @@ import (
 )
 
 func TestSend(t *testing.T) {
-	n := pushoverNotification{
+	n := Notification{
 		Title:    "title",
 		Message:  "mesg",
 		APIToken: "tok",

@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-func sendDiscordNotification(webhookURL, message string) error {
+func SendDiscordNotification(webhookURL, message string) error {
 	payloadBytes, err := json.Marshal(map[string]string{"content": message})
 	if err != nil {
 		return fmt.Errorf("error marshalling JSON payload: %v", err)
