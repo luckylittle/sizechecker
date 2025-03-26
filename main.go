@@ -18,6 +18,7 @@ import (
 
 	"github.com/inhies/go-bytesize"
 	"golang.org/x/sys/unix"
+	"github.com/luckylittle/sizechecker/pushover"
 )
 
 func getUsedSpace(path string) (int64, error) {
@@ -144,6 +145,7 @@ func main() {
 	limitFlag := flag.String("limit", "", "Limit size (e.g., 50GB). For 'u' runtype, it's the maximum allowed used space; for 'a', it's the minimum required free space.")
 	runTypeFlag := flag.String("runtype", "", "'a' for available space check, 'u' for used space check")
 	discordFlag := flag.String("discord", "", "Discord webhook URL for notifications (optional)")
+	pushoverFlag := flag.String("o", "", "Trigger a Pushover notification. This requires `PUSHOVER_APITOKEN` and `PUSHOVER_USERKEY` to be set!")
 	cooldownFlag := flag.Duration("cooldown", time.Minute, "Cooldown duration between notifications (e.g., 1m, 30s)")
 	flag.Parse()
 
@@ -240,6 +242,24 @@ func main() {
 			} else {
 				fmt.Println("Discord notification sent successfully.")
 				if err := updateNotificationTimestamp(*discordFlag); err != nil {
+					fmt.Printf("Error updating notification timestamp: %v\n", err)
+				}
+			}
+		} else {
+			fmt.Println("Notification not sent due to rate limiting.")
+		}
+	}
+
+	if *pushoverFlag != "" {
+		sendNotification, err := shouldSendNotification(*pushoverFlag, *cooldownFlag)
+		if err != nil {
+			fmt.Printf("Error checking notification cooldown: %v\n", err)
+		} else if sendNotification {
+			if err := pushoverNotification(*pushoverFlag, message); err != nil {
+				fmt.Printf("Error sending Pusover notification: %v\n", err)
+			} else {
+				fmt.Println("Pushover notification sent successfully.")
+				if err := updateNotificationTimestamp(*pushoverFlag); err != nil {
 					fmt.Printf("Error updating notification timestamp: %v\n", err)
 				}
 			}
