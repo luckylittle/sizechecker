@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,7 +16,9 @@ import (
 
 	"github.com/inhies/go-bytesize"
 	"golang.org/x/sys/unix"
+	"github.com/luckylittle/sizechecker/discord"
 	"github.com/luckylittle/sizechecker/pushover"
+
 )
 
 func getUsedSpace(path string) (int64, error) {
@@ -43,32 +43,6 @@ func getAvailableSpace(dir string) (int64, error) {
 		return 0, err
 	}
 	return int64(stat.Bavail) * int64(stat.Bsize), nil
-}
-
-func sendDiscordNotification(webhookURL, message string) error {
-	payloadBytes, err := json.Marshal(map[string]string{"content": message})
-	if err != nil {
-		return fmt.Errorf("error marshalling JSON payload: %v", err)
-	}
-
-	req, err := http.NewRequest("POST", webhookURL, bytes.NewReader(payloadBytes))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := (&http.Client{}).Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("received non-204 response from Discord: %s - %s", resp.Status, string(bodyBytes))
-	}
-
-	return nil
 }
 
 func getNotificationTimestampFilePath(webhookURL string) string {
